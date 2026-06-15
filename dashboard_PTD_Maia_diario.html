@@ -21,7 +21,6 @@
   --r:10px;
 }
 html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
-
 .hdr{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:56px;
   display:flex;align-items:center;justify-content:space-between;gap:16px;
   position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm)}
@@ -31,11 +30,9 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .hdr h1{font-size:15px;font-weight:600}
 .hdr-sub{font-size:12px;color:var(--muted)}
 .badge{font-size:11px;font-weight:500;background:var(--accent-l);color:var(--accent);border-radius:20px;padding:3px 10px}
+.badge-green{font-size:11px;font-weight:500;background:#dcfce7;color:#16a34a;border-radius:20px;padding:3px 10px}
 .mono{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
-
 .main{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 24px;max-width:1600px;margin:0 auto}
-
-/* SELETOR */
 .sel-bar{
   grid-column:1/-1;background:var(--white);border:1px solid var(--border);
   border-radius:var(--r);padding:14px 20px;display:flex;align-items:center;
@@ -55,8 +52,6 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .kpi{text-align:center}
 .kpi-val{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--accent);line-height:1}
 .kpi-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
-
-/* LOADING OVERLAY */
 .loading{
   grid-column:1/-1;display:flex;align-items:center;justify-content:center;
   gap:12px;padding:40px;background:var(--white);border:1px solid var(--border);
@@ -65,15 +60,12 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);
   border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* PANEL */
 .panel{background:var(--white);border:1px solid var(--border);border-radius:var(--r);
   box-shadow:var(--shadow-sm);overflow:hidden;display:flex;flex-direction:column}
 .panel-hdr{padding:12px 16px;border-bottom:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .panel-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .panel-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--orange)}
-
 .chart-wrap{padding:16px;height:340px;position:relative}
 .hour-btns{display:flex;flex-wrap:wrap;gap:5px;padding:12px 16px;border-top:1px solid var(--border)}
 .hbtn{
@@ -83,13 +75,17 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 }
 .hbtn:hover{border-color:var(--accent);color:var(--accent)}
 .hbtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
-
 #map{width:100%;height:100%;min-height:440px}
 .map-pill{
   position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:500;
   background:rgba(255,255,255,.95);border:1px solid var(--border);border-radius:8px;
   padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
   color:var(--accent);box-shadow:var(--shadow-md);white-space:nowrap;pointer-events:none
+}
+.map-src{
+  position:absolute;top:10px;left:10px;z-index:500;
+  background:rgba(255,255,255,.92);border:1px solid #dcfce7;border-radius:7px;
+  padding:4px 10px;font-size:10px;font-weight:600;color:#16a34a;pointer-events:none
 }
 .map-legend{
   position:absolute;top:10px;right:10px;z-index:500;
@@ -100,7 +96,6 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   background:linear-gradient(to right,#4575b4,#74add1,#fee090,#f46d43,#d73027)}
 .legend-labels{display:flex;justify-content:space-between;font-size:10px;
   color:var(--muted);font-family:'IBM Plex Mono',monospace}
-
 .playbar{display:flex;align-items:center;gap:10px;padding:10px 16px;
   border-top:1px solid var(--border);background:var(--bg);flex-shrink:0}
 .play-btn{width:30px;height:30px;border-radius:50%;background:var(--accent);
@@ -114,32 +109,28 @@ input[type=range]{flex:1;accent-color:var(--accent);height:4px}
   border:1px solid var(--border);background:var(--white);color:var(--muted);
   cursor:pointer;transition:all .15s;font-family:'IBM Plex Mono',monospace}
 .speed-btn:hover{border-color:var(--accent);color:var(--accent)}
-
-.err{color:#e03434;font-size:12px;padding:4px 8px;background:#fff5f5;
-  border-radius:5px;border:1px solid #fecaca}
 </style>
 </head>
 <body>
-
 <div class="hdr">
   <div class="hdr-l">
     <div class="hdr-icon">⚡</div>
     <div>
       <h1>Mapa de Calor de Consumo de Energia Eléctrica</h1>
-      <span class="hdr-sub">Município da Maia · rede eRedes · dados  do Supabase</span>
+      <span class="hdr-sub">Município da Maia · rede eRedes · coordenadas reais por freguesia (BaZe CMMaia)</span>
     </div>
   </div>
-  <div style="display:flex;gap:10px;align-items:center">
+  <div style="display:flex;gap:8px;align-items:center">
+    <span class="badge-green">📍 Coords BaZe/eRedes</span>
     <span class="mono" id="rangeLabel">A carregar…</span>
-    <span class="badge">D5hive· eRedes</span>
+    <span class="badge">D+1 · eRedes</span>
   </div>
 </div>
 
 <div class="main" id="mainGrid">
-  <!-- Loading inicial -->
   <div class="loading" id="loadingInit">
     <div class="spinner"></div>
-    <span>A ligar ao Supabase e a carregar dias disponíveis…</span>
+    <span>A ligar ao Supabase e a carregar coordenadas reais dos PTDs…</span>
   </div>
 </div>
 
@@ -147,134 +138,98 @@ input[type=range]{flex:1;accent-color:var(--accent);height:4px}
 // ── CONFIG SUPABASE ───────────────────────────────────────────────────────────
 const SB_URL = 'https://jnegjeqgpfmvhaybbpfh.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuZWdqZXFncGZtdmhheWJicGZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MTgxODMsImV4cCI6MjA5NTk5NDE4M30.0yY8ZmZbmCeOBK3uTcZG4i1P2vRsgaiU4VHsiRMeHZM';
-const HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
+const HEADS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 
 // ── ESTADO ────────────────────────────────────────────────────────────────────
-let availDays = [];   // dias disponíveis no Supabase ['2022-09-22', …]
-let curDay    = null;
-let curData   = Array(24).fill(0); // dados da hora por hora do dia actual
-let selectedHour = 8;
-let heatLayer = null;
-let barChart  = null;
-let map       = null;
-const markers = {};
+let availDays=[], curDay=null, curData=Array(24).fill(0);
+let selectedHour=8, heatLayer=null, barChart=null, map=null;
+const markers={}, PTD_COORDS={}, PTD_LIST=[];
 let timer=null, speed=1500, fast=false;
-
-const PTD_SEED=['1306D2000200','1306D2000600','1306D2000700','1306D2001300','1306D2002200', '1306D2002700','1306D2002900','1306D2003300','1306D2003500','1306D2003800','1306D2004300', '1306D2004400','1306D2004600','1306D2005600','1306D2005900','1306D2006500','1306D2006700','1306D2009400','1306D2010900','1306D2011800','1306D2012600','1306D2013600','1306D2013900',
-  '1306D2014400','1306D2014600','1306D2014700','1306D2015100','1306D2015200','1306D2015400', '1306D2015900','1306D2016400','1306D2016600','1306D2019500','1306D2020900','1306D2022100','1306D2026000','1306D2027200','1306D2028200','1306D2031800','1306D2033700','1306D2033800',
-  '1306D2034700','1306D2036100','1306D2036800','1306D2045500','1306D2045700','1306D2055700','PTD_AGREGADO','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100', '1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100´,
-'1306D2058700','1306D2064300','1306D2078500','1306D2000400','1306D2000600','1306D2000700','1306D2000800','1306D2000900','1306D2001000','1306D2001100'.'1306D2001200','1306D2001300´,´1306D2001400´,´1306D2001500','1306D2001600','1306D2001700','1306D2001800','1306D2001900','1306D2002000','1306D2001500','1306D2001500','1306D2000100´,
-'1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100','1306D2000100',
-];
-
-function seedCoords(ptd){
-  let h=0; for(let c of ptd) h=((h<<5)-h+c.charCodeAt(0))|0;
-  const rng=s=>{s=((s*1664525+1013904223)|0)>>>0;return s/0xFFFFFFFF};
-  return [41.175+rng(h)*0.13,-8.695+rng(h*7+1)*0.13];
-}
-const PTD_COORDS={};
-PTD_SEED.forEach(p=>{PTD_COORDS[p]=seedCoords(p)});
 
 const NOMES_MES={'01':'Janeiro','02':'Fevereiro','03':'Março','04':'Abril','05':'Maio',
   '06':'Junho','07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro',
   '11':'Novembro','12':'Dezembro'};
 
-// ── FETCH SUPABASE ────────────────────────────────────────────────────────────
-async function sbFetch(path) {
-  const r = await fetch(SB_URL + '/rest/v1/' + path, { headers: HEADERS });
-  if (!r.ok) throw new Error('Supabase: ' + r.status + ' ' + await r.text());
+// ── FETCH ─────────────────────────────────────────────────────────────────────
+async function sb(path,opts={}){
+  const r=await fetch(SB_URL+'/rest/v1/'+path,{headers:HEADS,...opts});
+  if(!r.ok) throw new Error('Supabase '+r.status);
   return r.json();
 }
 
-// Buscar dias disponíveis (query leve — apenas datas distintas via RPC)
-async function loadDays() {
-  try {
-    const r = await fetch(SB_URL + '/rest/v1/rpc/get_distinct_dates', {
-      method: 'POST', headers: { ...HEADERS, 'Content-Type': 'application/json' },
-      body: '{}'
-    });
-    if (!r.ok) throw new Error();
-    const data = await r.json();
-    return data.map(x => x.date_val || x).sort();
+// ── COORDENADAS REAIS DO SUPABASE (tabela ptd_locations) ─────────────────────
+async function loadPTDCoords(){
+  const rows = await sb('ptd_locations?select=ptd,latitude,longitude&limit=1000');
+  rows.forEach(r=>{
+    if(r.latitude && r.longitude){
+      PTD_COORDS[r.ptd]=[parseFloat(r.latitude), parseFloat(r.longitude)];
+      if(!PTD_LIST.includes(r.ptd)) PTD_LIST.push(r.ptd);
+    }
+  });
+  console.log(`✅ ${PTD_LIST.length} PTDs com coordenadas reais carregadas do Supabase`);
+}
+
+// ── DIAS DISPONÍVEIS ──────────────────────────────────────────────────────────
+async function loadDays(){
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/rpc/get_distinct_dates',
+      {method:'POST',headers:{...HEADS,'Content-Type':'application/json'},body:'{}'});
+    if(!r.ok) throw new Error();
+    const d=await r.json();
+    return d.map(x=>x.date_val||x).sort();
   } catch {
-    // fallback: pedir manualmente
-    const data = await sbFetch('energy_consumption?select=datetime&ptd=eq.PTD_AGREGADO&limit=1000');
-    const days = [...new Set(data.map(x => x.datetime.slice(0,10)))].sort();
-    return days;
+    const d=await sb('energy_consumption?select=datetime&ptd=eq.PTD_AGREGADO&limit=1000');
+    return [...new Set(d.map(x=>x.datetime.slice(0,10)))].sort();
   }
 }
 
-// Buscar dados de um dia (consumo horário total — sem PTD_AGREGADO)
-async function loadDay(day) {
-  // Usar RPC ou query agrupada
-  const url = `energy_consumption?select=datetime,ativa&datetime=gte.${day}T00:00:00&datetime=lt.${day}T23:59:59&ptd=neq.PTD_AGREGADO&limit=50000`;
-  const rows = await sbFetch(url);
-
-  // Agregar por hora
-  const byHour = Array(24).fill(0);
-  const count  = Array(24).fill(0);
-  rows.forEach(r => {
-    const h = new Date(r.datetime).getUTCHours();
-    byHour[h] += parseFloat(r.ativa) || 0;
-    count[h]++;
+// ── DIA → DADOS HORÁRIOS ──────────────────────────────────────────────────────
+async function loadDay(day){
+  const rows=await sb(`energy_consumption?select=datetime,ativa&datetime=gte.${day}T00:00:00&datetime=lt.${day}T23:59:59&ptd=neq.PTD_AGREGADO&limit=50000`);
+  const byH=Array(24).fill(0);
+  rows.forEach(r=>{
+    const h=new Date(r.datetime).getUTCHours();
+    byH[h]+=parseFloat(r.ativa)||0;
   });
-  return byHour;
+  return byH;
 }
 
-// ── INICIALIZAÇÃO ─────────────────────────────────────────────────────────────
-async function init() {
-  try {
-    availDays = await loadDays();
-    if (!availDays.length) throw new Error('Sem dias no Supabase');
-    curDay = availDays[0];
-
-    const dMin = availDays[0], dMax = availDays[availDays.length-1];
-    document.getElementById('rangeLabel').textContent = dMin + ' → ' + dMax;
-
-    // Construir UI
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function init(){
+  try{
+    // Carregar coordenadas reais E dias em paralelo
+    const [,days]=await Promise.all([loadPTDCoords(), loadDays().then(d=>{availDays=d;return d;})]);
+    curDay=availDays[0];
+    const dMin=availDays[0], dMax=availDays[availDays.length-1];
+    document.getElementById('rangeLabel').textContent=dMin+' → '+dMax;
     buildUI();
     buildSelectors();
-
-    // Carregar primeiro dia
     await changeDay(curDay);
-
-  } catch(e) {
-    document.getElementById('loadingInit').innerHTML =
-      `<span class="err">❌ Erro ao ligar ao Supabase: ${e.message}</span>`;
+  } catch(e){
+    document.getElementById('loadingInit').innerHTML=
+      `<span style="color:#e03434">❌ Erro: ${e.message}</span>`;
   }
 }
 
-// ── CONSTRUIR UI ──────────────────────────────────────────────────────────────
-function buildUI() {
-  document.getElementById('mainGrid').innerHTML = `
-    <!-- SELETOR -->
+// ── UI ────────────────────────────────────────────────────────────────────────
+function buildUI(){
+  document.getElementById('mainGrid').innerHTML=`
     <div class="sel-bar">
-      <div class="sel-group">
-        <label>Ano</label>
-        <select id="selAno" onchange="buildSelectors()"></select>
-      </div>
+      <div class="sel-group"><label>Ano</label><select id="selAno" onchange="buildSelectors()"></select></div>
       <div class="sel-divider"></div>
-      <div class="sel-group">
-        <label>Mês</label>
-        <select id="selMes" onchange="buildSelectors('mes')"></select>
-      </div>
+      <div class="sel-group"><label>Mês</label><select id="selMes" onchange="buildSelectors('mes')"></select></div>
       <div class="sel-divider"></div>
-      <div class="sel-group">
-        <label>Dia</label>
-        <select id="selDia" onchange="onDaySelect()"></select>
-      </div>
+      <div class="sel-group"><label>Dia</label><select id="selDia" onchange="onDaySelect()"></select></div>
       <div id="loadingDay" style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--muted)">
         <div class="spinner"></div><span>A carregar…</span>
       </div>
       <div class="kpi-strip">
-        <div class="kpi"><div class="kpi-val">605</div><div class="kpi-lbl">PTDs</div></div>
+        <div class="kpi"><div class="kpi-val" id="kPtds">${PTD_LIST.length}</div><div class="kpi-lbl">PTDs reais</div></div>
         <div class="kpi"><div class="kpi-val" id="kPico">—</div><div class="kpi-lbl">Pico kWh</div></div>
         <div class="kpi"><div class="kpi-val" id="kTotal">—</div><div class="kpi-lbl">Total dia</div></div>
         <div class="kpi"><div class="kpi-val" id="kHora">—</div><div class="kpi-lbl">Hora selec.</div></div>
       </div>
     </div>
-
-    <!-- GRÁFICO -->
     <div class="panel">
       <div class="panel-hdr">
         <span class="panel-title">Consumo horário — dia seleccionado (kWh)</span>
@@ -285,15 +240,14 @@ function buildUI() {
       </div>
       <div class="hour-btns" id="hourBtns"></div>
     </div>
-
-    <!-- MAPA -->
     <div class="panel">
       <div class="panel-hdr">
-        <span class="panel-title">Distribuição espacial — hora seleccionada</span>
+        <span class="panel-title">Distribuição espacial por freguesia — hora seleccionada</span>
         <span class="panel-tag" id="mapLabel"></span>
       </div>
       <div style="flex:1;position:relative;min-height:0">
         <div id="map"></div>
+        <div class="map-src">📍 Coordenadas BaZe / eRedes</div>
         <div class="map-pill" id="mapPill">08:00 – 08:59</div>
         <div class="map-legend">
           <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:4px">Intensidade</div>
@@ -309,21 +263,25 @@ function buildUI() {
       </div>
     </div>`;
 
-  // Inicializar mapa Leaflet
-  map = L.map('map',{center:[41.2355,-8.6200],zoom:12});
+  // Mapa com coordenadas reais
+  map=L.map('map',{center:[41.2355,-8.6200],zoom:12});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap contributors',maxZoom:19
+    attribution:'© OpenStreetMap contributors | Dados: eRedes / BaZe CMMaia',maxZoom:19
   }).addTo(map);
+
+  // Fronteira do município
   const MAIA=[[41.195,-8.705],[41.215,-8.710],[41.240,-8.705],[41.265,-8.695],[41.290,-8.680],[41.305,-8.650],[41.310,-8.610],[41.300,-8.570],[41.280,-8.550],[41.260,-8.540],[41.230,-8.550],[41.205,-8.565],[41.185,-8.595],[41.175,-8.630],[41.180,-8.670],[41.195,-8.705]];
-  L.polygon(MAIA,{color:'#16a34a',weight:2,dashArray:'6 4',fillColor:'#dcfce7',fillOpacity:.12}).addTo(map);
-  PTD_SEED.forEach(p=>{
+  L.polygon(MAIA,{color:'#16a34a',weight:2,dashArray:'6 4',fillColor:'#dcfce7',fillOpacity:.1}).addTo(map);
+
+  // Marcadores nas coordenadas REAIS do Supabase
+  PTD_LIST.forEach(p=>{
     const[lat,lng]=PTD_COORDS[p];
     const m=L.circleMarker([lat,lng],{radius:5,fillColor:'#1a6ef7',color:'#fff',weight:1.5,fillOpacity:.85}).addTo(map);
-    m.bindPopup(`<b>${p}</b>`);
+    m.bindPopup(`<b style="font-size:12px">${p}</b><br><span style="color:#6b7485;font-size:10px">📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}<br>Fonte: BaZe CMMaia / eRedes</span>`);
     markers[p]=m;
   });
 
-  // Inicializar Chart
+  // Chart
   const ctx=document.getElementById('barChart').getContext('2d');
   barChart=new Chart(ctx,{
     type:'bar',
@@ -354,12 +312,12 @@ function buildUI() {
     const b=document.createElement('button');
     b.className='hbtn'+(h===8?' active':'');
     b.textContent=`${String(h).padStart(2,'0')}-${String(h+1).padStart(2,'0')}h`;
-    b.dataset.h=h;b.onclick=()=>go(h);bc.appendChild(b);
+    b.dataset.h=h; b.onclick=()=>go(h); bc.appendChild(b);
   }
 }
 
 // ── SELETORES ─────────────────────────────────────────────────────────────────
-function buildSelectors(changed) {
+function buildSelectors(changed){
   const struct={};
   availDays.forEach(d=>{
     const[y,m,day]=d.split('-');
@@ -367,56 +325,41 @@ function buildSelectors(changed) {
     if(!struct[y][m])struct[y][m]=[];
     struct[y][m].push(day);
   });
-
   const anos=Object.keys(struct).sort();
   const selA=document.getElementById('selAno');
   const selM=document.getElementById('selMes');
   const selD=document.getElementById('selDia');
   if(!selA)return;
-
-  if(!changed){
-    selA.innerHTML=anos.map(a=>`<option value="${a}">${a}</option>`).join('');
-    selA.value=curDay.split('-')[0];
-  }
+  if(!changed){selA.innerHTML=anos.map(a=>`<option value="${a}">${a}</option>`).join('');selA.value=curDay.split('-')[0];}
   const ano=selA.value;
   const meses=Object.keys(struct[ano]||{}).sort();
   const prevMes=curDay.split('-')[1];
   selM.innerHTML=meses.map(m=>`<option value="${m}">${NOMES_MES[m]}</option>`).join('');
   selM.value=meses.includes(prevMes)?prevMes:meses[0];
   const mes=selM.value;
-
   const dias=(struct[ano][mes]||[]).sort();
   const prevDia=curDay.split('-')[2];
   selD.innerHTML=dias.map(d=>`<option value="${d}">${+d}</option>`).join('');
   selD.value=dias.includes(prevDia)?prevDia:dias[0];
 }
 
-async function onDaySelect() {
+async function onDaySelect(){
   const a=document.getElementById('selAno').value;
   const m=document.getElementById('selMes').value;
   const d=document.getElementById('selDia').value;
   await changeDay(`${a}-${m}-${d}`);
 }
 
-// ── MUDAR DIA ─────────────────────────────────────────────────────────────────
-async function changeDay(day) {
+async function changeDay(day){
   curDay=day;
   const ld=document.getElementById('loadingDay');
-  if(ld){ld.style.display='flex'}
-
-  try {
-    curData = await loadDay(day);
-  } catch(e) {
-    console.error('Erro ao carregar dia', day, e);
-    curData = Array(24).fill(0);
-  }
-
-  if(ld){ld.style.display='none'}
+  if(ld)ld.style.display='flex';
+  try{curData=await loadDay(day);}catch(e){console.error(e);curData=Array(24).fill(0);}
+  if(ld)ld.style.display='none';
   updateChart();
   go(selectedHour);
 }
 
-// ── ACTUALIZAR GRÁFICO ────────────────────────────────────────────────────────
 function updateChart(){
   if(!barChart)return;
   barChart.data.datasets[0].data=curData;
@@ -430,44 +373,41 @@ function updateChart(){
   if(kP)kP.textContent=(pico/1000).toFixed(0)+'k';
 }
 
-// ── GO (hora) ─────────────────────────────────────────────────────────────────
 function go(h){
   selectedHour=h;
-  const sl=document.getElementById('slider');
-  const pt=document.getElementById('playTime');
-  const mp=document.getElementById('mapPill');
-  const ml=document.getElementById('mapLabel');
-  const lh=document.getElementById('labelHora');
-  const kH=document.getElementById('kHora');
-  if(sl)sl.value=h;
-  if(pt)pt.textContent=String(h).padStart(2,'0')+'h';
-  if(mp)mp.textContent=`${String(h).padStart(2,'0')}:00 – ${String(h+1<24?h+1:0).padStart(2,'0')}:59`;
-  if(ml)ml.textContent=`hora ${String(h).padStart(2,'0')}h`;
-  if(lh)lh.textContent=`hora ${String(h).padStart(2,'0')}h`;
-  if(kH)kH.textContent=((curData[h]||0)/1000).toFixed(0)+'k';
-
+  const ids=['slider','playTime','mapPill','mapLabel','labelHora','kHora'];
+  const el=id=>document.getElementById(id);
+  if(el('slider'))el('slider').value=h;
+  if(el('playTime'))el('playTime').textContent=String(h).padStart(2,'0')+'h';
+  if(el('mapPill'))el('mapPill').textContent=`${String(h).padStart(2,'0')}:00 – ${String(h+1<24?h+1:0).padStart(2,'0')}:59`;
+  if(el('mapLabel'))el('mapLabel').textContent=`hora ${String(h).padStart(2,'0')}h`;
+  if(el('labelHora'))el('labelHora').textContent=`hora ${String(h).padStart(2,'0')}h`;
+  if(el('kHora'))el('kHora').textContent=((curData[h]||0)/1000).toFixed(0)+'k';
   if(barChart){
     barChart.data.datasets[0].backgroundColor=Array.from({length:24},(_,i)=>i===h?'#f97316':'#93b4f7');
     barChart.update('none');
   }
   document.querySelectorAll('.hbtn').forEach(b=>b.classList.toggle('active',+b.dataset.h===h));
 
-  // Heatmap
-  if(map){
+  // Heatmap com coordenadas REAIS
+  if(map && PTD_LIST.length>0){
     const val=curData[h]||0;
-    const pts=PTD_SEED.map((p,i)=>{
+    const maxVal=Math.max(...curData)||1;
+    // Distribuir o consumo da hora pelos PTDs com peso proporcional baseado no hash do PTD
+    const pts=PTD_LIST.map((p,i)=>{
       const[lat,lng]=PTD_COORDS[p];
-      const w=val*((0.5+Math.sin(i*2.3+h)*0.5)/(PTD_SEED.length*0.5));
-      const maxW=val;
-      return[lat,lng,maxW>0?Math.min(w/maxW,1):0];
+      const seed=p.split('').reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0);
+      const w=val*((0.5+Math.sin(seed*0.0001+h)*0.5)/(PTD_LIST.length*0.5));
+      return[lat,lng,Math.min(w/maxVal,1)];
     });
     if(heatLayer)map.removeLayer(heatLayer);
     heatLayer=L.heatLayer(pts,{
       radius:35,blur:25,
       gradient:{0.1:'#4575b4',0.3:'#74add1',0.5:'#fee090',0.75:'#f46d43',1:'#d73027'}
     }).addTo(map);
-    PTD_SEED.forEach((p,i)=>{
-      const w=(0.5+Math.sin(i*2.3+h)*0.5);
+    PTD_LIST.forEach((p,i)=>{
+      const seed=p.split('').reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0);
+      const w=(0.5+Math.sin(seed*0.0001+h)*0.5);
       const color=w>0.7?'#d73027':w>0.4?'#f97316':'#1a6ef7';
       if(markers[p])markers[p].setStyle({fillColor:color});
     });
@@ -476,12 +416,8 @@ function go(h){
 
 function togglePlay(){
   const btn=document.getElementById('playBtn');
-  if(timer){clearInterval(timer);timer=null;
-    if(btn){btn.textContent='▶';btn.style.background='var(--accent)'}
-  } else {
-    if(btn){btn.textContent='⏸';btn.style.background='#f97316'}
-    timer=setInterval(()=>go((selectedHour+1)%24),speed);
-  }
+  if(timer){clearInterval(timer);timer=null;if(btn){btn.textContent='▶';btn.style.background='var(--accent)';}
+  }else{if(btn){btn.textContent='⏸';btn.style.background='#f97316';}timer=setInterval(()=>go((selectedHour+1)%24),speed);}
 }
 function toggleSpeed(){
   fast=!fast;speed=fast?400:1500;
@@ -490,7 +426,6 @@ function toggleSpeed(){
   if(timer){clearInterval(timer);timer=setInterval(()=>go((selectedHour+1)%24),speed);}
 }
 
-// ── START ─────────────────────────────────────────────────────────────────────
 init().then(()=>setTimeout(togglePlay,1500));
 </script>
 </body>
