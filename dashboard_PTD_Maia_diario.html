@@ -117,7 +117,7 @@ input[type=range]{flex:1;accent-color:var(--accent);height:4px}
     <div class="hdr-icon">⚡</div>
     <div>
       <h1>Mapa de Calor de Consumo de Energia Eléctrica</h1>
-      <span class="hdr-sub">Município da Maia · rede eRedes · coordenadas reais por freguesia (BaZe CMMaia)</span>
+      <span class="hdr-sub">Município da Maia · rede eRedes · coordenadas por freguesia (BaZe CMMaia)</span>
     </div>
   </div>
   <div style="display:flex;gap:8px;align-items:center">
@@ -166,7 +166,7 @@ async function loadPTDCoords(){
       if(!PTD_LIST.includes(r.ptd)) PTD_LIST.push(r.ptd);
     }
   });
-  console.log(`✅ ${PTD_LIST.length} PTDs com coordenadas reais carregadas do Supabase`);
+  console.log(`✅ ${PTD_LIST.length} PTDs com coordenadas carregadas do Supabase`);
 }
 
 // ── DIAS DISPONÍVEIS ──────────────────────────────────────────────────────────
