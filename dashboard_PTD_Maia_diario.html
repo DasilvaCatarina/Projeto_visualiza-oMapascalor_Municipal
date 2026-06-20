@@ -340,7 +340,7 @@ async function init() {
   badge.textContent = 'A carregar dados do Supabase…';
   try {
     const [locs, dias] = await Promise.all([
-      supaSelect('ptd_locations?select=ptd,latitude,longitude'),
+      supaSelect('ptd_locations?select=ptd,latitude,longitude&limit=5000'),
       supaRpc('get_available_days')
     ]);
 
@@ -353,7 +353,7 @@ async function init() {
       const completo = d.n_rows >= d.n_ptds * 96 * 0.8; // ~80% das leituras de 15min esperadas
       const opt = document.createElement('option');
       opt.value = d.dia;
-      opt.textContent = `${fmtDia(d.dia)} — ${d.n_ptds} PTDs${completo ? '' : ' (parcial)'}`;
+      opt.textContent = `${fmtDia(d.dia)}${completo ? '' : ' (parcial)'}`;
       sel.appendChild(opt);
     });
 
