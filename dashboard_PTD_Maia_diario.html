@@ -314,10 +314,14 @@ async function mudarDia(dia) {
     const linhas = await supaRpc('get_hourly_consumption', { p_day: dia });
     const ptd_hourly = {};
     const hourly_total = new Array(24).fill(0);
-    linhas.forEach(({ ptd, hour, kwh }) => {
-      if (!ptd_hourly[ptd]) ptd_hourly[ptd] = new Array(24).fill(0);
-      ptd_hourly[ptd][hour] = kwh;
-      hourly_total[hour] += kwh;
+    linhas.forEach((row) => {
+      const valores = new Array(24).fill(0);
+      for (let h = 0; h < 24; h++) {
+        const v = Number(row['h' + h]) || 0;
+        valores[h] = v;
+        hourly_total[h] += v;
+      }
+      ptd_hourly[row.ptd] = valores;
     });
     dadosDia = { hourly_total, ptd_hourly };
 
