@@ -132,7 +132,7 @@
     <div class="header-icon">⚡</div>
     <div>
       <h1>Mapa de Calor de Consumo de Energia Eléctrica Municipal</h1>
-      <span class="header-sub">Município da Maia · Dados Reais por Dia (Supabase)</span>
+      <span class="header-sub">Município da Maia · Dados por Dia (Supabase)</span>
     </div>
   </div>
   <div style="display:flex; gap:15px; align-items:center">
@@ -330,7 +330,7 @@ async function mudarDia(dia) {
 
     recriarMarkers();
     go(selectedHour);
-    badge.textContent = `Dados reais · ${fmtDia(dia)}`;
+    badge.textContent = `Dados Github · ${fmtDia(dia)}`;
   } catch (err) {
     console.error(err);
     badge.textContent = 'Erro a ligar ao Supabase';
@@ -354,7 +354,7 @@ async function init() {
     dias.sort((a,b) => a.dia.localeCompare(b.dia));
     sel.innerHTML = '';
     dias.forEach(d => {
-      const completo = d.n_rows >= d.n_ptds * 96 * 0.8; // ~80% das leituras de 15min esperadas
+      const completo = d.n_rows >= d.n_ptds * 96 * 0.8;
       const opt = document.createElement('option');
       opt.value = d.dia;
       opt.textContent = `${fmtDia(d.dia)}${completo ? '' : ' (parcial)'}`;
