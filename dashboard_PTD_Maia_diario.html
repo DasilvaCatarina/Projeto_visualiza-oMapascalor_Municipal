@@ -195,7 +195,7 @@
 <script>
 // ─── LIGAÇÃO AO SUPABASE (chave anon pública, só leitura via RLS) ───
 const SUPABASE_URL = "https://jnegjeqgpfmvhaybbpfh.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuZWdqZXFncGZtdmhheWJicGZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MTgxODMsImV4cCI6MjA5NTk5NDE4M30.0yY8ZmZbmCeOBK3uTcZG4i1P2vRsgaiU4VHsiRMeHZM";
+const SUPABASE_KEY = "sb_secret_-OJmomycm0HDQW7Mmgy3tQ_AteeZN2d";
 
 async function supaSelect(path) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
