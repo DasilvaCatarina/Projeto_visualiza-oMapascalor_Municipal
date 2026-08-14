@@ -132,7 +132,7 @@
 <div class="footer-line"></div>
 
 <script>
-// ─── LIGAÇÃO AO SUPABASE (chave publishable/anon pública, só leitura) ───
+// Ligação ao Supabase (chave anon, só de leitura)
 const SUPABASE_URL = "https://jnegjeqgpfmvhaybbpfh.supabase.co";
 const SUPABASE_KEY = "sb_publishable_X6wYhkC_OI7uzcfRddPVGw_t9z8sOKD";
 
@@ -157,7 +157,7 @@ function fmtDia(diaISO) {
   return `${d} ${MESES[parseInt(m,10)-1]} ${y}`;
 }
 
-// ─── INICIALIZAR GRÁFICO (estilo escuro, tipo Highcharts) ───
+// Configuração do gráfico de barras (tema escuro)
 const ctx = document.getElementById('barChart').getContext('2d');
 const barChart = new Chart(ctx, {
   type: 'bar',
@@ -198,7 +198,7 @@ function downloadChart() {
   a.click();
 }
 
-// ─── INICIALIZAR MAPA ───
+// Configuração do mapa
 const map = L.map('map', { center: MAIA_CENTER, zoom: 12 });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
 L.control.scale({ imperial: true, metric: true }).addTo(map);
@@ -214,7 +214,7 @@ function recriarMarkers() {
   markers = {};
   Object.keys(dadosDia.ptd_hourly).forEach(p => {
     const info = ptdInfo[p];
-    if (!info) return; // sem coordenada conhecida para este PTD
+    if (!info) return; // não sabemos onde fica este PTD
     const m = L.circleMarker([info.lat, info.lon], { radius: 5, fillColor: '#1a6ef7', color: '#fff', weight: 1.5, fillOpacity: 0.85 })
       .bindTooltip(`${p}${info.con_name ? ' · ' + info.con_name : ''}`);
     if (showMarkers) m.addTo(map);
@@ -232,7 +232,7 @@ function toggleMarkers() {
   });
 }
 
-// ─── LOGICA DE NAVEGAÇÃO / ATUALIZAÇÃO (dentro do dia ativo) ───
+// Atualiza o gráfico e o mapa quando se muda de hora
 function go(h) {
   selectedHour = h;
 
@@ -250,7 +250,7 @@ function go(h) {
   document.getElementById('mapUrlLink').href =
     `${SUPABASE_URL}/rest/v1/v_consumo_horario?dia=eq.${diaAtivo}&hora=eq.${h}`;
 
-  // Mapa de Calor — só PTDs com coordenada conhecida
+  // só entram no mapa de calor os PTDs que têm coordenadas
   const ptdDados = dadosDia.ptd_hourly;
   const listaPTDs = Object.keys(ptdDados).filter(p => ptdInfo[p]);
   const maxVal = Math.max(1, ...listaPTDs.map(p => ptdDados[p][h] || 0));
@@ -263,7 +263,7 @@ function go(h) {
   if (heatLayer) map.removeLayer(heatLayer);
   heatLayer = L.heatLayer(pts, { radius: 35, blur: 25, gradient: {0.1:'#fee090', 0.5:'#fdae61', 1.0:'#f97316'} }).addTo(map);
 
-  // Atualiza tooltips dos marcadores com o valor da hora selecionada
+  // atualizar o texto que aparece ao passar o rato nos pontos
   listaPTDs.forEach(p => {
     const info = ptdInfo[p];
     const v = ptdDados[p][h] || 0;
@@ -271,7 +271,7 @@ function go(h) {
   });
 }
 
-// ─── MUDAR O DIA SELECIONADO (vai buscar dados reais ao Supabase) ───
+// Vai buscar os dados de um dia ao Supabase e atualiza tudo
 async function mudarDia(dia) {
   if (!dia) return;
   diaAtivo = dia;
@@ -309,15 +309,17 @@ async function mudarDia(dia) {
   }
 }
 
-// ─── POPULAR O SELETOR DE DIAS E COORDENADAS, AO ARRANCAR ───
+// Corre uma vez, quando a página abre: busca os dias e as coordenadas dos PTDs
 async function init() {
   const sel = document.getElementById('diaSelector');
   const badge = document.getElementById('dbBadge');
   badge.textContent = 'A carregar dados do Supabase…';
   try {
-    const [locs, dias] = await Promise.all([
+    const [locs, diasRows] = await Promise.all([
       supaSelect('v_ptd_localizacao?select=cod_instalacao,dis_name,con_name,latitude,longitude,potencia&limit=5000'),
-      supaSelect('v_dias_disponiveis?select=dia,n_ptds,n_registos,n_esperado&order=dia')
+      // os dias vêm agora diretamente da tabela agregacao_geolocalizada, porque a
+      // view v_dias_disponiveis só estava a mostrar 1 dia (a tabela tem 4)
+      supaSelect('agregacao_geolocalizada?select=dia&order=dia')
     ]);
 
     ptdInfo = {};
@@ -327,14 +329,14 @@ async function init() {
       }
     });
 
+    // a tabela tem uma linha por leitura, por isso é preciso tirar os dias repetidos
+    const dias = [...new Set(diasRows.map(r => r.dia))].filter(Boolean).sort();
+
     sel.innerHTML = '';
-    dias.forEach(d => {
-      const nEsperado = Number(d.n_esperado) || 0;
-      const nRegistos = Number(d.n_registos) || 0;
-      const completo = nEsperado > 0 && nRegistos >= nEsperado * 0.8;
+    dias.forEach(dia => {
       const opt = document.createElement('option');
-      opt.value = d.dia;
-      opt.textContent = `${fmtDia(d.dia)}${completo ? '' : ' (parcial)'}`;
+      opt.value = dia;
+      opt.textContent = fmtDia(dia);
       sel.appendChild(opt);
     });
 
@@ -344,9 +346,8 @@ async function init() {
       return;
     }
 
-    // Por defeito, escolher o dia mais recente com dados completos
-    const completos = dias.filter(d => (Number(d.n_registos)||0) >= (Number(d.n_esperado)||0) * 0.8);
-    const diaDefault = (completos.length ? completos[completos.length-1] : dias[dias.length-1]).dia;
+    // por defeito fica selecionado o dia mais recente
+    const diaDefault = dias[dias.length-1];
     sel.value = diaDefault;
 
     await mudarDia(diaDefault);
@@ -357,7 +358,7 @@ async function init() {
   }
 }
 
-// ─── BOTÕES DAS HORAS ───
+// Criar os 24 botões das horas
 const btnContainer = document.getElementById('hourBtns');
 for (let h = 0; h < 24; h++) {
   const btn = document.createElement('button');
@@ -368,7 +369,7 @@ for (let h = 0; h < 24; h++) {
   btnContainer.appendChild(btn);
 }
 
-// Animação Play/Pause (autoplay ligado por defeito, como no mockup)
+// Play/Pause: avança automaticamente de hora em hora
 let timer = null;
 function togglePlay() {
   const btn = document.getElementById('playBtn');
@@ -381,9 +382,9 @@ function togglePlay() {
   }
 }
 
-// Inicializar
+// arrancar
 init();
-togglePlay(); // arranca em modo Play, como no mockup original
+togglePlay(); // começa já em Play
 </script>
 </body>
 </html>
