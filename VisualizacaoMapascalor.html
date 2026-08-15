@@ -325,7 +325,7 @@ async function init() {
         ptdInfo[l.cod_instalacao] = { lat: l.latitude, lon: l.longitude, dis_name: l.dis_name, con_name: l.con_name, potencia: Number(l.potencia) || 0 };
       }
     });
-
+ 
     // a tabela tem uma linha por leitura, por isso é preciso tirar os dias repetidos
     const dias = [...new Set(diasRows.map(r => r.dia))].filter(Boolean).sort();
 
