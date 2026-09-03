@@ -1,1 +1,451 @@
 
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de calor de consumo de energia eléctrica</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/h3-js@4.1.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #1a1a1a;
+    background: #ffffff;
+    font-size: 14px;
+  }
+  h1 { font-size: 26px; font-weight: 700; margin: 0 0 12px 0; color: #111; }
+  .desc { font-size: 14px; line-height: 1.6; color: #222; margin-bottom: 14px; max-width: 1400px; }
+  .day-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .day-row label { font-size: 13px; font-weight: 600; color: #333; }
+  .day-row select { padding: 6px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
+  #dbBadge { font-size: 12px; color: #666; background: #f0f0f0; padding: 4px 8px; border-radius: 4px; }
+  #kpiNote { font-size: 12px; color: #444; font-weight: 500; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: #111;
+    border-radius: 6px;
+    padding: 10px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .chart-legend {
+    position: absolute; top: 14px; left: 14px; z-index: 5;
+    background: rgba(255,255,255,.95); border-radius: 4px; padding: 6px 12px;
+    display: flex; gap: 16px; font-size: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; color: #333; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .chart-menu {
+    position: absolute; top: 10px; right: 12px; z-index: 5; color: #bbb; cursor: pointer;
+    font-size: 20px; line-height: 1; user-select: none;
+  }
+  .chart-menu:hover { color: #fff; }
+  .chart-canvas-wrap { height: 430px; padding-top: 46px; position: relative; }
+  .chart-credit { position: absolute; bottom: 6px; right: 12px; font-size: 10px; color: #777; }
+  .map-card { position: relative; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  #map { width: 100%; height: 500px; }
+  .hour-select-text { font-size: 13px; color: #222; margin: 18px 0 8px; }
+  .hour-select-text em { font-style: italic; }
+  .hour-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; margin-bottom: 18px; max-width: 900px; }
+  .hbtn {
+    font-family: 'Courier New', monospace; font-size: 12px; padding: 6px 2px;
+    border: 1px solid #ccc; border-radius: 4px; background: #fff; color: #333; cursor: pointer; transition: all .12s;
+  }
+  .hbtn:hover { border-color: #888; background: #f8f8f8; }
+  .hbtn.active { background: #222; border-color: #222; color: #fff; font-weight: bold; }
+  .bottom-row { display: grid; grid-template-columns: 1fr; gap: 24px; padding-top: 14px; border-top: 1px solid #eee; }
+  .bottom-row p { font-size: 13px; color: #222; line-height: 1.5; margin-bottom: 8px; }
+  .ctrl-btn {
+    padding: 7px 16px; border: 1px solid #999; border-radius: 4px; background: #f4f4f4;
+    font-size: 13px; cursor: pointer; font-weight: 600; color: #222;
+  }
+  .ctrl-btn:hover { background: #e9e9e9; }
+  .ctrl-btn.on { background: #1a6ef7; border-color: #1a6ef7; color: #fff; }
+  .footer-line { height: 3px; background: #16a34a; margin-top: 22px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<h1>Mapa de calor de consumo de energia eléctrica</h1>
+<div class="desc">
+  O gráfico da esquerda mostra a variação do consumo de energia eléctrica ao longo dos vários intervalos de 15 minutos do dia.<br>
+  O mapa do lado direito mostra a distribuição espacial do consumo em hexágonos H3 para cada intervalo de 15 minutos.<br>
+  Dados obtidos diretamente da base de dados Supabase via a view <code>v_consumo_15min</code>.
+</div>
+<div class="day-row">
+  <label for="diaSelector">Dia:</label>
+  <select id="diaSelector" onchange="mudarDia(this.value)">
+    <option value="">A carregar dias...</option>
+  </select>
+  <span id="dbBadge">A carregar dados do Supabase…</span>
+  <span id="kpiNote"></span>
+</div>
+<div class="grid">
+  <div class="chart-card">
+    <div class="chart-legend">
+      <div class="legend-item"><span class="legend-dot" style="background:#9a9a9a"></span>Consumo 15-min (kWh)</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>Intervalo ativo no mapa</div>
+    </div>
+    <div class="chart-menu" title="Descarregar gráfico" onclick="downloadChart()">&#9776;</div>
+    <div class="chart-canvas-wrap"><canvas id="barChart"></canvas></div>
+    <div class="chart-credit">Chart.js</div>
+  </div>
+  <div class="map-card">
+    <div id="map"></div>
+  </div>
+</div>
+<div class="hour-select-text">Use os botões <em>hh:mm</em> para seleccionar um intervalo de 15 minutos em particular:</div>
+<div class="hour-grid" id="hourBtns"></div>
+<div class="bottom-row">
+  <div>
+    <p>Prima o botão para mostrar ou ocultar os pontos dos PTDs sobre o mapa de calor:</p>
+    <button class="ctrl-btn on" id="markersBtn" onclick="toggleMarkers()">Mostrar PTDs</button>
+  </div>
+</div>
+<div class="footer-line"></div>
+<script>
+// Ligação ao Supabase
+const SUPABASE_URL = "https://jnegjeqgpfmvhaybbpfh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_X6wYhkC_OI7uzcfRddPVGw_t9z8sOKD";
+async function supaSelect(path, pageSize = 1000) {
+  let todasAsLinhas = [];
+  let offset = 0;
+  while (true) {
+    const sep = path.includes('?') ? '&' : '?';
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}${sep}limit=${pageSize}&offset=${offset}`, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (!res.ok) throw new Error(`Supabase select falhou (${res.status}) em ${path}`);
+    const pagina = await res.json();
+    if (!Array.isArray(pagina) || pagina.length === 0) break;
+    todasAsLinhas = todasAsLinhas.concat(pagina);
+    if (pagina.length < pageSize) break;
+    offset += pageSize;
+  }
+  return todasAsLinhas;
+}
+let selectedSlot = 32; // 08:00 por defeito
+let slotsDoDiaAtivo = [];
+let diaAtivo = null;
+let ptdInfo = {};
+let dadosDia = { slot_total: new Array(96).fill(0), ptd_slot: {} };
+let maximoHexagonoDia = 1;
+let showMarkers = true;
+const MAIA_CENTER = [41.2355, -8.6200];
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function fmtDia(diaISO) {
+  const [y,m,d] = diaISO.split('-');
+  return `${d} ${MESES[parseInt(m,10)-1]} ${y}`;
+}
+function slotLabel(s) {
+  const h = Math.floor(s/4);
+  const m = (s%4)*15;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+// Configuração do gráfico Chart.js
+const ctx = document.getElementById('barChart').getContext('2d');
+const barChart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'Consumo (kWh)',
+      data: [],
+      backgroundColor: [],
+      borderRadius: 2,
+      barPercentage: 0.9
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        ticks: {
+          color: '#dcdcdc',
+          font: { size: 10 },
+          maxRotation: 45,
+          minRotation: 45,
+          callback: (val, idx) => {
+            const s = slotsDoDiaAtivo[idx];
+            return (s !== undefined && s % 4 === 0) ? slotLabel(s) : '';
+          }
+        },
+        grid: { color: 'rgba(255,255,255,0.05)' }
+      },
+      y: {
+        ticks: {
+          color: '#dcdcdc',
+          font: { size: 11 },
+          callback: v => v >= 1000 ? (v/1000).toLocaleString('pt-PT') + 'k' : v
+        },
+        grid: { color: 'rgba(255,255,255,0.1)' },
+        title: { display: true, text: 'Consumo Global (kWh)', color: '#dcdcdc', font: { size: 11 } }
+      }
+    },
+    onClick: (evt, elements) => {
+      if (elements.length) go(slotsDoDiaAtivo[elements[0].index]);
+    }
+  }
+});
+function downloadChart() {
+  const a = document.createElement('a');
+  a.href = barChart.toBase64Image();
+  a.download = `consumo_${diaAtivo || 'dia'}.png`;
+  a.click();
+}
+// Configuração do Mapa Leaflet
+const map = L.map('map', { center: MAIA_CENTER, zoom: 12 });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+L.control.scale({ imperial: false, metric: true }).addTo(map);
+// Limite do concelho da Maia
+const MAIA_BORDER_RESERVA = [[41.195,-8.705],[41.240,-8.705],[41.290,-8.680],[41.310,-8.610],[41.280,-8.550],[41.205,-8.565],[41.175,-8.630],[41.195,-8.705]];
+const ESTILO_LIMITE = { color: '#1a7a4c', weight: 2, dashArray: '6 5', fillColor: '#1a7a4c', fillOpacity: 0.08 };
+async function carregarLimiteMaia() {
+  try {
+    const res = await fetch('https://baze.cm-maia.pt/BaZe/api/api4gj.php?nome=LimConcVM');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const geojson = await res.json();
+    L.geoJSON(geojson, { style: ESTILO_LIMITE }).addTo(map);
+  } catch (err) {
+    L.polygon(MAIA_BORDER_RESERVA, ESTILO_LIMITE).addTo(map);
+  }
+}
+carregarLimiteMaia();
+let hexLayer = null;
+let markers = {};
+const H3_RESOLUCAO = 9;
+const SIGMA_METROS = 250;
+const GRADIENTE = [
+  [0.00, [255, 255, 255]],
+  [0.25, [255, 255, 0]],
+  [0.50, [255, 165, 0]],
+  [0.75, [255, 0, 0]],
+  [1.00, [128, 0, 128]],
+];
+function corGradiente(t) {
+  t = Math.max(0, Math.min(1, t));
+  for (let i = 0; i < GRADIENTE.length - 1; i++) {
+    const [t0, c0] = GRADIENTE[i];
+    const [t1, c1] = GRADIENTE[i + 1];
+    if (t >= t0 && t <= t1) {
+      const f = (t - t0) / (t1 - t0);
+      const r = Math.round(c0[0] + f * (c1[0] - c0[0]));
+      const g = Math.round(c0[1] + f * (c1[1] - c0[1]));
+      const b = Math.round(c0[2] + f * (c1[2] - c0[2]));
+      return `rgb(${r},${g},${b})`;
+    }
+  }
+  return `rgb(${GRADIENTE[GRADIENTE.length - 1][1].join(",")})`;
+}
+function haversineM(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const phi1 = (lat1 * Math.PI) / 180, phi2 = (lat2 * Math.PI) / 180;
+  const dPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const dLambda = ((lon2 - lon1) * Math.PI) / 180;
+  const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+function consumoPorHexagono(listaPTDs, ptdDados, s) {
+  const porHex = {};
+  listaPTDs.forEach((p) => {
+    const v = ptdDados[p]?.[s] || 0;
+    if (v <= 0) return;
+    const info = ptdInfo[p];
+    if (!info || info.lat == null || info.lon == null) return;
+    const hexCentral = h3.latLngToCell(info.lat, info.lon, H3_RESOLUCAO);
+    const vizinhanca = h3.gridDisk(hexCentral, 1);
+    const pesos = vizinhanca.map((hex) => {
+      const [latHex, lonHex] = h3.cellToLatLng(hex);
+      const d = haversineM(info.lat, info.lon, latHex, lonHex);
+      return Math.exp(-(d * d) / (2 * SIGMA_METROS * SIGMA_METROS));
+    });
+    const somaPesos = pesos.reduce((a, b) => a + b, 0);
+    vizinhanca.forEach((hex, i) => {
+      const parcela = v * (pesos[i] / (somaPesos || 1));
+      porHex[hex] = (porHex[hex] || 0) + parcela;
+    });
+  });
+  return porHex;
+}
+function recriarMarkers() {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+  Object.keys(dadosDia.ptd_slot).forEach(p => {
+    const info = ptdInfo[p];
+    if (!info) return;
+    const m = L.circleMarker([info.lat, info.lon], {
+      radius: 5,
+      fillColor: '#1a6ef7',
+      color: '#fff',
+      weight: 1.5,
+      fillOpacity: 0.85
+    }).bindTooltip(`${p}${info.con_name ? ' · ' + info.con_name : ''}`);
+    if (showMarkers) m.addTo(map);
+    markers[p] = m;
+  });
+}
+function toggleMarkers() {
+  showMarkers = !showMarkers;
+  const btn = document.getElementById('markersBtn');
+  btn.classList.toggle('on', showMarkers);
+  Object.values(markers).forEach(m => {
+    if (showMarkers) { if (!map.hasLayer(m)) m.addTo(map); }
+    else { if (map.hasLayer(m)) map.removeLayer(m); }
+  });
+}
+function go(s) {
+  selectedSlot = s;
+  const total = dadosDia.slot_total[s] || 0;
+  document.getElementById('kpiNote').textContent =
+    `Intervalo ${slotLabel(s)} · ${total.toLocaleString('pt-PT', { maximumFractionDigits: 1 })} kWh`;
+  barChart.data.datasets[0].backgroundColor = slotsDoDiaAtivo.map(sl => sl === s ? '#f97316' : '#9a9a9a');
+  barChart.update('none');
+  document.querySelectorAll('.hbtn').forEach(b => b.classList.toggle('active', +b.dataset.slot === s));
+  const ptdDados = dadosDia.ptd_slot;
+  const listaPTDs = Object.keys(ptdDados).filter(p => ptdInfo[p]);
+  const porHex = consumoPorHexagono(listaPTDs, ptdDados, s);
+  if (hexLayer) map.removeLayer(hexLayer);
+  const poligonos = Object.entries(porHex).map(([hex, valor]) => {
+    const fronteira = h3.cellToBoundary(hex);
+    const cor = corGradiente(valor / (maximoHexagonoDia || 1));
+    return L.polygon(fronteira, { stroke: false, fillColor: cor, fillOpacity: 0.7 })
+      .bindTooltip(`${valor.toLocaleString('pt-PT', { maximumFractionDigits: 1 })} kWh`);
+  });
+  hexLayer = L.layerGroup(poligonos).addTo(map);
+  listaPTDs.forEach(p => {
+    const info = ptdInfo[p];
+    const v = ptdDados[p][s] || 0;
+    if (markers[p]) {
+      markers[p].setTooltipContent(
+        `${p}${info.con_name ? ' · ' + info.con_name : ''}<br>${v.toLocaleString('pt-PT', { maximumFractionDigits: 2 })} kWh · Potência: ${info.potencia ? info.potencia.toLocaleString('pt-PT') + ' kVA' : '—'}`
+      );
+    }
+  });
+}
+async function mudarDia(dia) {
+  if (!dia) return;
+  diaAtivo = dia;
+  const badge = document.getElementById('dbBadge');
+  badge.textContent = 'A carregar dia…';
+  try {
+    const linhas = await supaSelect(`v_consumo_15min?dia=eq.${dia}&select=cod_instalacao,slot,total_ativas&order=slot`);
+    const ptd_slot = {};
+    const slot_total = new Array(96).fill(0);
+    let potenciaTotal = 0;
+    const ptdsVistos = new Set();
+    const slotsVistos = new Set();
+    linhas.forEach((row) => {
+      const cod = row.cod_instalacao;
+      const slot = Number(row.slot);
+      if (!ptd_slot[cod]) ptd_slot[cod] = new Array(96).fill(0);
+      const v = Number(row.total_ativas) || 0;
+      ptd_slot[cod][slot] = v;
+      slot_total[slot] += v;
+      ptdsVistos.add(cod);
+      slotsVistos.add(slot);
+    });
+    ptdsVistos.forEach(cod => {
+      if (ptdInfo[cod]) potenciaTotal += Number(ptdInfo[cod].potencia) || 0;
+    });
+    dadosDia = { slot_total, ptd_slot };
+    const listaPTDsDia = Object.keys(ptd_slot).filter(p => ptdInfo[p]);
+    let maiorValor = 1;
+    [...slotsVistos].forEach((slot) => {
+      const porHexDoSlot = consumoPorHexagono(listaPTDsDia, ptd_slot, slot);
+      Object.values(porHexDoSlot).forEach((v) => { if (v > maiorValor) maiorValor = v; });
+    });
+    maximoHexagonoDia = maiorValor;
+    const slotsDisponiveis = [...slotsVistos].sort((a,b) => a-b);
+    if (!slotsDisponiveis.length) {
+      badge.textContent = `Sem dados para ${fmtDia(dia)}`;
+      barChart.data.labels = [];
+      barChart.data.datasets[0].data = [];
+      barChart.update('none');
+      renderHourButtons([]);
+      return;
+    }
+    if (!slotsVistos.has(selectedSlot)) selectedSlot = slotsDisponiveis[0];
+    slotsDoDiaAtivo = slotsDisponiveis;
+    barChart.data.labels = slotsDisponiveis.map(s => slotLabel(s));
+    barChart.data.datasets[0].data = slotsDisponiveis.map(s => slot_total[s]);
+    renderHourButtons(slotsDisponiveis);
+    recriarMarkers();
+    go(selectedSlot);
+    badge.textContent = `Supabase · ${fmtDia(dia)}`;
+    document.getElementById('kpiNote').textContent += ` · ${ptdsVistos.size} PTDs · ${potenciaTotal.toLocaleString('pt-PT')} kVA`;
+  } catch (err) {
+    console.error(err);
+    badge.textContent = `Erro: ${err.message}`;
+  }
+}
+function renderHourButtons(slots) {
+  const btnContainer = document.getElementById('hourBtns');
+  btnContainer.innerHTML = '';
+  slots.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'hbtn' + (s === selectedSlot ? ' active' : '');
+    btn.textContent = slotLabel(s);
+    btn.dataset.slot = s;
+    btn.onclick = () => go(s);
+    btnContainer.appendChild(btn);
+  });
+}
+async function init() {
+  const sel = document.getElementById('diaSelector');
+  const badge = document.getElementById('dbBadge');
+  badge.textContent = 'A carregar dados do Supabase…';
+  try {
+    const [locs, diasRows] = await Promise.all([
+      supaSelect('v_ptd_localizacao?select=cod_instalacao,dis_name,con_name,latitude,longitude,potencia'),
+      supaSelect('v_consumo_15min?select=dia&order=dia')
+    ]);
+    ptdInfo = {};
+    locs.forEach(l => {
+      if (l.latitude != null && l.longitude != null) {
+        ptdInfo[l.cod_instalacao] = {
+          lat: Number(l.latitude),
+          lon: Number(l.longitude),
+          dis_name: l.dis_name,
+          con_name: l.con_name,
+          potencia: Number(l.potencia) || 0
+        };
+      }
+    });
+    const dias = [...new Set(diasRows.map(r => r.dia))].filter(Boolean).sort();
+    sel.innerHTML = '';
+    dias.forEach(dia => {
+      const opt = document.createElement('option');
+      opt.value = dia;
+      opt.textContent = fmtDia(dia);
+      sel.appendChild(opt);
+    });
+    if (!dias.length) {
+      badge.textContent = 'Sem dias disponíveis na tabela';
+      sel.innerHTML = '<option value="">Sem dados</option>';
+      return;
+    }
+    const diaDefault = dias[dias.length - 1];
+    sel.value = diaDefault;
+    await mudarDia(diaDefault);
+  } catch (err) {
+    console.error(err);
+    badge.textContent = `Erro: ${err.message}`;
+    sel.innerHTML = '<option value="">Sem ligação ao Supabase</option>';
+  }
+}
+init();
+</script>
+</body>
+</html>
