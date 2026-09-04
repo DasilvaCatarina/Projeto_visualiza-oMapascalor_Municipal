@@ -112,6 +112,7 @@
 // Ligação ao Supabase
 const SUPABASE_URL = "https://jnegjeqgpfmvhaybbpfh.supabase.co";
 const SUPABASE_KEY = "sb_publishable_X6wYhkC_OI7uzcfRddPVGw_t9z8sOKD";
+
 async function supaSelect(path, pageSize = 1000) {
   let todasAsLinhas = [];
   let offset = 0;
@@ -132,24 +133,31 @@ async function supaSelect(path, pageSize = 1000) {
   }
   return todasAsLinhas;
 }
+
 let selectedSlot = 32; // 08:00 por defeito
 let slotsDoDiaAtivo = [];
 let diaAtivo = null;
 let ptdInfo = {};
+let ptdWeightsCache = {}; // Cache de pesos H3 pré-calculados
 let dadosDia = { slot_total: new Array(96).fill(0), ptd_slot: {} };
 let maximoHexagonoDia = 1;
 let showMarkers = true;
+
 const MAIA_CENTER = [41.2355, -8.6200];
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
 function fmtDia(diaISO) {
+  if (!diaISO) return '';
   const [y,m,d] = diaISO.split('-');
   return `${d} ${MESES[parseInt(m,10)-1]} ${y}`;
 }
+
 function slotLabel(s) {
   const h = Math.floor(s/4);
   const m = (s%4)*15;
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 }
+
 // Configuração do gráfico Chart.js
 const ctx = document.getElementById('barChart').getContext('2d');
 const barChart = new Chart(ctx, {
@@ -197,21 +205,25 @@ const barChart = new Chart(ctx, {
     }
   }
 });
+
 function downloadChart() {
   const a = document.createElement('a');
   a.href = barChart.toBase64Image();
   a.download = `consumo_${diaAtivo || 'dia'}.png`;
   a.click();
 }
+
 // Configuração do Mapa Leaflet
 const map = L.map('map', { center: MAIA_CENTER, zoom: 12 });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 L.control.scale({ imperial: false, metric: true }).addTo(map);
+
 // Limite do concelho da Maia
 const MAIA_BORDER_RESERVA = [[41.195,-8.705],[41.240,-8.705],[41.290,-8.680],[41.310,-8.610],[41.280,-8.550],[41.205,-8.565],[41.175,-8.630],[41.195,-8.705]];
 const ESTILO_LIMITE = { color: '#1a7a4c', weight: 2, dashArray: '6 5', fillColor: '#1a7a4c', fillOpacity: 0.08 };
+
 async function carregarLimiteMaia() {
   try {
     const res = await fetch('https://baze.cm-maia.pt/BaZe/api/api4gj.php?nome=LimConcVM');
@@ -223,6 +235,7 @@ async function carregarLimiteMaia() {
   }
 }
 carregarLimiteMaia();
+
 let hexLayer = null;
 let markers = {};
 const H3_RESOLUCAO = 9;
@@ -234,6 +247,7 @@ const GRADIENTE = [
   [0.75, [255, 0, 0]],
   [1.00, [128, 0, 128]],
 ];
+
 function corGradiente(t) {
   t = Math.max(0, Math.min(1, t));
   for (let i = 0; i < GRADIENTE.length - 1; i++) {
@@ -249,6 +263,7 @@ function corGradiente(t) {
   }
   return `rgb(${GRADIENTE[GRADIENTE.length - 1][1].join(",")})`;
 }
+
 function haversineM(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const phi1 = (lat1 * Math.PI) / 180, phi2 = (lat2 * Math.PI) / 180;
@@ -257,28 +272,44 @@ function haversineM(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+// Otimização: Pré-calcula os vizinhos H3 e a distribuição proporcional por PTD
+function precalcularPesosPTD(cod) {
+  const info = ptdInfo[cod];
+  if (!info || info.lat == null || info.lon == null) return null;
+  
+  const hexCentral = h3.latLngToCell(info.lat, info.lon, H3_RESOLUCAO);
+  const vizinhanca = h3.gridDisk(hexCentral, 1);
+  const pesos = vizinhanca.map((hex) => {
+    const [latHex, lonHex] = h3.cellToLatLng(hex);
+    const d = haversineM(info.lat, info.lon, latHex, lonHex);
+    return Math.exp(-(d * d) / (2 * SIGMA_METROS * SIGMA_METROS));
+  });
+  
+  const somaPesos = pesos.reduce((a, b) => a + b, 0) || 1;
+  return vizinhanca.map((hex, i) => ({ hex, fator: pesos[i] / somaPesos }));
+}
+
 function consumoPorHexagono(listaPTDs, ptdDados, s) {
   const porHex = {};
   listaPTDs.forEach((p) => {
     const v = ptdDados[p]?.[s] || 0;
     if (v <= 0) return;
-    const info = ptdInfo[p];
-    if (!info || info.lat == null || info.lon == null) return;
-    const hexCentral = h3.latLngToCell(info.lat, info.lon, H3_RESOLUCAO);
-    const vizinhanca = h3.gridDisk(hexCentral, 1);
-    const pesos = vizinhanca.map((hex) => {
-      const [latHex, lonHex] = h3.cellToLatLng(hex);
-      const d = haversineM(info.lat, info.lon, latHex, lonHex);
-      return Math.exp(-(d * d) / (2 * SIGMA_METROS * SIGMA_METROS));
-    });
-    const somaPesos = pesos.reduce((a, b) => a + b, 0);
-    vizinhanca.forEach((hex, i) => {
-      const parcela = v * (pesos[i] / (somaPesos || 1));
-      porHex[hex] = (porHex[hex] || 0) + parcela;
+    
+    if (!ptdWeightsCache[p]) {
+      ptdWeightsCache[p] = precalcularPesosPTD(p);
+    }
+    
+    const pesosVizinhos = ptdWeightsCache[p];
+    if (!pesosVizinhos) return;
+
+    pesosVizinhos.forEach(({ hex, fator }) => {
+      porHex[hex] = (porHex[hex] || 0) + (v * fator);
     });
   });
   return porHex;
 }
+
 function recriarMarkers() {
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
@@ -296,6 +327,7 @@ function recriarMarkers() {
     markers[p] = m;
   });
 }
+
 function toggleMarkers() {
   showMarkers = !showMarkers;
   const btn = document.getElementById('markersBtn');
@@ -305,25 +337,33 @@ function toggleMarkers() {
     else { if (map.hasLayer(m)) map.removeLayer(m); }
   });
 }
+
 function go(s) {
   selectedSlot = s;
   const total = dadosDia.slot_total[s] || 0;
   document.getElementById('kpiNote').textContent =
     `Intervalo ${slotLabel(s)} · ${total.toLocaleString('pt-PT', { maximumFractionDigits: 1 })} kWh`;
+  
   barChart.data.datasets[0].backgroundColor = slotsDoDiaAtivo.map(sl => sl === s ? '#f97316' : '#9a9a9a');
   barChart.update('none');
+  
   document.querySelectorAll('.hbtn').forEach(b => b.classList.toggle('active', +b.dataset.slot === s));
+  
   const ptdDados = dadosDia.ptd_slot;
   const listaPTDs = Object.keys(ptdDados).filter(p => ptdInfo[p]);
   const porHex = consumoPorHexagono(listaPTDs, ptdDados, s);
+  
   if (hexLayer) map.removeLayer(hexLayer);
+  
   const poligonos = Object.entries(porHex).map(([hex, valor]) => {
     const fronteira = h3.cellToBoundary(hex);
     const cor = corGradiente(valor / (maximoHexagonoDia || 1));
     return L.polygon(fronteira, { stroke: false, fillColor: cor, fillOpacity: 0.7 })
       .bindTooltip(`${valor.toLocaleString('pt-PT', { maximumFractionDigits: 1 })} kWh`);
   });
+  
   hexLayer = L.layerGroup(poligonos).addTo(map);
+  
   listaPTDs.forEach(p => {
     const info = ptdInfo[p];
     const v = ptdDados[p][s] || 0;
@@ -334,6 +374,7 @@ function go(s) {
     }
   });
 }
+
 async function mudarDia(dia) {
   if (!dia) return;
   diaAtivo = dia;
@@ -346,6 +387,7 @@ async function mudarDia(dia) {
     let potenciaTotal = 0;
     const ptdsVistos = new Set();
     const slotsVistos = new Set();
+    
     linhas.forEach((row) => {
       const cod = row.cod_instalacao;
       const slot = Number(row.slot);
@@ -356,17 +398,22 @@ async function mudarDia(dia) {
       ptdsVistos.add(cod);
       slotsVistos.add(slot);
     });
+    
     ptdsVistos.forEach(cod => {
       if (ptdInfo[cod]) potenciaTotal += Number(ptdInfo[cod].potencia) || 0;
     });
+    
     dadosDia = { slot_total, ptd_slot };
     const listaPTDsDia = Object.keys(ptd_slot).filter(p => ptdInfo[p]);
+    
+    // Otimização: Determinação eficiente do pico máximo de consumo num hexágono durante todo o dia
     let maiorValor = 1;
     [...slotsVistos].forEach((slot) => {
       const porHexDoSlot = consumoPorHexagono(listaPTDsDia, ptd_slot, slot);
       Object.values(porHexDoSlot).forEach((v) => { if (v > maiorValor) maiorValor = v; });
     });
     maximoHexagonoDia = maiorValor;
+    
     const slotsDisponiveis = [...slotsVistos].sort((a,b) => a-b);
     if (!slotsDisponiveis.length) {
       badge.textContent = `Sem dados para ${fmtDia(dia)}`;
@@ -376,13 +423,17 @@ async function mudarDia(dia) {
       renderHourButtons([]);
       return;
     }
+    
     if (!slotsVistos.has(selectedSlot)) selectedSlot = slotsDisponiveis[0];
     slotsDoDiaAtivo = slotsDisponiveis;
+    
     barChart.data.labels = slotsDisponiveis.map(s => slotLabel(s));
     barChart.data.datasets[0].data = slotsDisponiveis.map(s => slot_total[s]);
+    
     renderHourButtons(slotsDisponiveis);
     recriarMarkers();
     go(selectedSlot);
+    
     badge.textContent = `Supabase · ${fmtDia(dia)}`;
     document.getElementById('kpiNote').textContent += ` · ${ptdsVistos.size} PTDs · ${potenciaTotal.toLocaleString('pt-PT')} kVA`;
   } catch (err) {
@@ -390,6 +441,7 @@ async function mudarDia(dia) {
     badge.textContent = `Erro: ${err.message}`;
   }
 }
+
 function renderHourButtons(slots) {
   const btnContainer = document.getElementById('hourBtns');
   btnContainer.innerHTML = '';
@@ -402,6 +454,7 @@ function renderHourButtons(slots) {
     btnContainer.appendChild(btn);
   });
 }
+
 async function init() {
   const sel = document.getElementById('diaSelector');
   const badge = document.getElementById('dbBadge');
@@ -411,6 +464,7 @@ async function init() {
       supaSelect('v_ptd_localizacao?select=cod_instalacao,dis_name,con_name,latitude,longitude,potencia'),
       supaSelect('v_consumo_15min?select=dia&order=dia')
     ]);
+    
     ptdInfo = {};
     locs.forEach(l => {
       if (l.latitude != null && l.longitude != null) {
@@ -423,19 +477,23 @@ async function init() {
         };
       }
     });
+    
     const dias = [...new Set(diasRows.map(r => r.dia))].filter(Boolean).sort();
     sel.innerHTML = '';
+    
     dias.forEach(dia => {
       const opt = document.createElement('option');
       opt.value = dia;
       opt.textContent = fmtDia(dia);
       sel.appendChild(opt);
     });
+    
     if (!dias.length) {
       badge.textContent = 'Sem dias disponíveis na tabela';
       sel.innerHTML = '<option value="">Sem dados</option>';
       return;
     }
+    
     const diaDefault = dias[dias.length - 1];
     sel.value = diaDefault;
     await mudarDia(diaDefault);
@@ -445,6 +503,7 @@ async function init() {
     sel.innerHTML = '<option value="">Sem ligação ao Supabase</option>';
   }
 }
+
 init();
 </script>
 </body>
